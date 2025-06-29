@@ -1,0 +1,266 @@
+<!-- Full game HTML with sound effects and skin change on purchase -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hamster Coin Clicker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Arial', sans-serif;
+      background: radial-gradient(circle, #1e002a, #000);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+    }
+    .wallet {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: #2b2b44;
+      padding: 10px 15px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #000;
+      text-align: center;
+    }
+    .wallet h3, .wallet p { margin: 5px 0; }
+    .hamster {
+      width: 150px;
+      height: 150px;
+      background: url('https://cdn.pixabay.com/photo/2013/07/13/11/43/hamster-158534_960_720.png') center/contain no-repeat;
+      background-size: cover;
+      margin: 20px auto;
+      cursor: pointer;
+    }
+    .coin-display { font-size: 24px; margin: 10px 0; }
+    .energy-bar {
+      margin: 10px 0;
+      background: #333;
+      width: 90%;
+      max-width: 300px;
+      height: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 5px #444 inset;
+    }
+    .energy-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff0, #f90);
+      width: 100%;
+    }
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .btn {
+      background: #3d3d5c;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .footer { margin-top: auto; font-size: 12px; opacity: 0.5; }
+    .shop-container {
+      display: none;
+      background: #222244;
+      position: fixed;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px #000;
+      z-index: 10;
+    }
+    .shop-item {
+      margin: 10px;
+      padding: 10px;
+      background: #444;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<audio id="tapSound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
+<audio id="buySound" src="https://www.soundjay.com/button/beep-08b.wav"></audio>
+<audio id="rewardSound" src="https://www.soundjay.com/button/beep-06.wav"></audio>
+
+<div class="wallet">
+  <h3>💼 Wallet</h3>
+  <p>Coins: <span id="coins">0</span></p>
+  <p>Rank: <span id="rank">Bronze</span></p>
+</div>
+
+<div class="coin-display">💰 Tap to earn coins!</div>
+<div class="hamster" id="hamster" onclick="tapHamster()"></div>
+<div class="energy-bar"><div class="energy-fill" id="energyFill"></div></div>
+<p>⚡ Energy: <span id="energy">1000</span>/1000</p>
+
+<div class="buttons">
+  <button class="btn" onclick="claimDaily()">🎁 Daily Reward</button>
+  <button class="btn" onclick="playMiniGame()">🎮 Mini Game</button>
+  <button class="btn" onclick="boostEnergy()">🚀 Boost</button>
+  <button class="btn" onclick="openShop()">🛍️ Shop</button>
+  <button class="btn" onclick="referFriend()">👥 Refer & Earn</button>
+</div>
+<div style="margin-top: 10px; text-align: center;">
+  <button class="btn" onclick="shareTelegram()">📨 Share on Telegram</button>
+</div>
+<div class="footer">
+  <p id="referralStats" style="font-size:14px;text-align:center;"></p>
+</div>
+
+<!-- Shop Modal -->
+<div class="shop-container" id="shop">
+  <h3>🛍️ Coin Shop</h3>
+  <div class="shop-item">
+    🎨 Skin: Gold Hamster - 100 Coins <br>
+    <button onclick="buyItem(100, 'Gold Hamster')">Buy</button>
+  </div>
+  <div class="shop-item">
+    ✨ Auto-Clicker (5s) - 50 Coins <br>
+    <button onclick="buyItem(50, 'Auto-Clicker')">Buy</button>
+  </div>
+  <button class="btn" onclick="closeShop()">Close</button>
+</div>
+
+<script>
+let coins = parseInt(localStorage.getItem('coins')) || 0;
+let energy = parseInt(localStorage.getItem('energy')) || 1000;
+let lastDaily = localStorage.getItem('lastDaily') || '';
+let referralCount = parseInt(localStorage.getItem('refCount')) || 0;
+let referralEarnings = parseInt(localStorage.getItem('refEarnings')) || 0;
+let skin = localStorage.getItem('skin') || 'default';
+
+function updateUI() {
+  document.getElementById("coins").textContent = coins;
+  document.getElementById("energy").textContent = energy;
+  document.getElementById("energyFill").style.width = `${energy / 10}%`;
+  document.getElementById("rank").textContent = coins < 100 ? 'Bronze' : coins < 500 ? 'Silver' : 'Gold';
+  if (skin === 'gold') {
+    document.getElementById("hamster").style.backgroundImage = "url('https://cdn-icons-png.flaticon.com/512/616/616408.png')";
+  }
+  localStorage.setItem('coins', coins);
+  localStorage.setItem('energy', energy);
+  localStorage.setItem('skin', skin);
+}
+
+function playSound(id) {
+  const sound = document.getElementById(id);
+  if (sound) sound.play();
+}
+
+function tapHamster() {
+  if (energy >= 10) {
+    coins += 1;
+    energy -= 10;
+    playSound('tapSound');
+    updateUI();
+  } else {
+    alert("Not enough energy! Try boost.");
+  }
+}
+function claimDaily() {
+  const today = new Date().toDateString();
+  if (lastDaily !== today) {
+    coins += 50;
+    lastDaily = today;
+    localStorage.setItem('lastDaily', today);
+    playSound('rewardSound');
+    alert("+50 Daily Coins!");
+    updateUI();
+  } else {
+    alert("You already claimed today's reward!");
+  }
+}
+function playMiniGame() {
+  if (energy >= 100) {
+    const reward = Math.floor(Math.random() * 100);
+    coins += reward;
+    energy -= 100;
+    playSound('rewardSound');
+    alert(`Mini Game Won: +${reward} coins!`);
+    updateUI();
+  } else {
+    alert("You need at least 100 energy.");
+  }
+}
+function boostEnergy() {
+  if (energy < 1000) {
+    energy = Math.min(1000, energy + 200);
+    alert("Energy boosted by 200!");
+    updateUI();
+  } else {
+    alert("Energy already full!");
+  }
+}
+function openShop() {
+  document.getElementById("shop").style.display = "block";
+}
+function closeShop() {
+  document.getElementById("shop").style.display = "none";
+}
+function buyItem(price, name) {
+  if (coins >= price) {
+    coins -= price;
+    playSound('buySound');
+    alert(`✅ Purchased: ${name}`);
+    if (name === 'Gold Hamster') skin = 'gold';
+    updateUI();
+  } else {
+    alert("Not enough coins!");
+  }
+}
+function referFriend() {
+  const referralCode = btoa(Date.now().toString());
+  const link = `${location.origin}${location.pathname}?ref=${referralCode}`;
+  navigator.clipboard.writeText(link);
+  alert("🔗 Referral link copied to clipboard!\n\nShare it on Telegram to earn coins.");
+}
+function updateReferralStats() {
+  document.getElementById('referralStats').textContent = `👥 Referrals: ${referralCount} | 💸 Total Earned: ${referralEarnings} Coins`;
+}
+function shareTelegram() {
+  const referralCode = btoa(Date.now().toString());
+  const link = `${location.origin}${location.pathname}?ref=${referralCode}`;
+  const msg = encodeURIComponent(`💰 Join this fun game and earn coins! Click here: ${link}`);
+  window.open(`https://t.me/share/url?url=${link}&text=${msg}`, '_blank');
+}
+window.addEventListener('load', () => {
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get('ref');
+  if (ref && !localStorage.getItem('refUsed')) {
+    coins += 20;
+    referralCount += 1;
+    referralEarnings += 10;
+    localStorage.setItem('refUsed', ref);
+    localStorage.setItem('refCount', referralCount);
+    localStorage.setItem('refEarnings', referralEarnings);
+    alert("🎉 You joined via referral! +20 Coins");
+    updateUI();
+    updateReferralStats();
+  } else {
+    updateReferralStats();
+  }
+});
+updateUI();
+// 🕒 Energy Regen: +1 energy every 3 seconds (if not full)
+setInterval(() => {
+  if (energy < 1000) {
+    energy += 1;
+    updateUI();
+  }
+}, 3000);
+
+</script>
+</body>
+</html>
